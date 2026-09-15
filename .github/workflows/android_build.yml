@@ -1,0 +1,54 @@
+name: "Godot Android Build"
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  export-android:
+    name: Export Android APK & AAB
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # 1. Setup Java (Dibutuhkan untuk Android SDK & Gradle)
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      # 2. Setup Android SDK
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      # 3. Download & Extract Keystore dari GitHub Secrets (Jika menggunakan signed build)
+      - name: Setup Keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > release.keystore
+          fi
+
+      # 4. Export APK dan AAB menggunakan Godot Engine
+      - name: Godot Android Export
+        uses: dularion/godot-android-export@v1.4.0
+        with:
+          godot_version: 4.7.2 # Ganti dengan versi Godot yang kamu gunakan (misal: 4.3 atau 4.x)
+          export_type: apk # Opsi: 'apk' atau 'aab'
+          export_mode: release
+          project_directory: '.'
+          
+      # 5. Simpan Hasil Build sebagai Artifact GitHub
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-builds
+          path: |
+            build/*.apk
+            build/*.aab
